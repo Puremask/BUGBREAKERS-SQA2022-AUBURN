@@ -1,6 +1,4 @@
 # BUGBREAKERS-SQA2022-AUBURN
 
-- Brooke Kirkham
-- Cole Spencer
-- Garrison Moore
-- Jake Walker
+## Collaborators
+Brooke Kirkham, Cole Spencer, Garrison Moore, Jake Walker
