@@ -1,0 +1,29 @@
+Activities:
+
+Modifying Python methods: The Python methods were modified to include forensic logging, 
+allowing for better tracking of method execution and improving the overall security and maintainability of the code. 
+Logging was added using Python's built-in logging module.
+
+Creating a Git pre-commit hook: 
+A Git pre-commit hook was created to run a security scan and report the findings in a CSV file when a Python file is changed and committed. 
+The hook was designed to ensure that security vulnerabilities are caught early in the development process.
+
+Lessons Learned:
+
+Adding logging to Python methods: 
+Integrating logging into the methods not only helped with tracking execution and errors but also provided better context and understanding of the code. 
+It is a best practice to include logging in any software project to aid in debugging and maintenance.
+
+Git hooks and line ending issues: 
+Creating a Git hook required attention to line ending differences between Unix and Windows systems. It was discovered that using a text editor that allows selection of line endings, 
+such as Visual Studio Code, is crucial for avoiding issues related to line endings. Using Unix-style line endings (LF) for Git hook scripts is recommended to prevent any problems.
+
+Importance of security checks: 
+Creating a pre-commit hook to perform security checks highlighted the importance of identifying and addressing security weaknesses early in the development process. 
+This helps in ensuring that the final product is more robust and secure, preventing potential exploitation of vulnerabilities.
+
+Conclusion:
+The process of modifying Python methods to include forensic logging and creating a Git pre-commit hook provided valuable insights into best practices for software development, 
+such as the importance of logging and early security checks. 
+In addition, the challenges faced with line endings underscored the need for using appropriate text editors to prevent issues that may arise from differences in line endings between operating systems. 
+Overall, the experience proved to be a valuable learning opportunity for improving software development and maintenance processes.
