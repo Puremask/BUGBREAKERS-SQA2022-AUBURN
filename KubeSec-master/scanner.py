@@ -8,17 +8,30 @@ import constants
 import graphtaint 
 import os 
 import pandas as pd 
-import numpy as np 
+import numpy as np
+import logging
+
+# Set up logging
+logging.basicConfig(
+    filename="forensics.log",
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+)
 
 def getYAMLFiles(path_to_dir):
-    valid_  = [] 
-    for root_, dirs, files_ in os.walk( path_to_dir ):
-       for file_ in files_:
-           full_p_file = os.path.join(root_, file_)
-           if(os.path.exists(full_p_file)):
-             if (full_p_file.endswith( constants.YML_EXTENSION  )  or full_p_file.endswith( constants.YAML_EXTENSION  )  ):
-               valid_.append(full_p_file)
-    return valid_ 
+    logging.info(f"getYAMLFiles called with path_to_dir: {path_to_dir}")
+
+    valid_ = []
+    for root_, dirs, files_ in os.walk(path_to_dir):
+        for file_ in files_:
+            full_p_file = os.path.join(root_, file_)
+            if os.path.exists(full_p_file):
+                if full_p_file.endswith(constants.YML_EXTENSION) or full_p_file.endswith(constants.YAML_EXTENSION):
+                    valid_.append(full_p_file)
+                    logging.info(f"Found valid YAML file: {full_p_file}")
+
+    logging.info(f"getYAMLFiles completed for path_to_dir: {path_to_dir} with result: {valid_}")
+    return valid_
 
 def isValidUserName(uName): 
     valid = True
@@ -133,39 +146,38 @@ def scanForSecrets(yaml_d):
 
 
 def scanForOverPrivileges(script_path):
-    key_count , privi_dict_return = 0, {} 
-    kind_values = [] 
-    checkVal = parser.checkIfValidK8SYaml( script_path )
-    if(checkVal): 
-        dict_as_list = parser.loadMultiYAML( script_path )
-        yaml_dict    = parser.getSingleDict4MultiDocs( dict_as_list )
-        # print(yaml_dict.keys())
-        key_lis   = []
-        parser.getKeyRecursively(yaml_dict, key_lis) 
-        '''
-        if you are using `parser.getKeyRecursively` to get all keys , you need to do some trnasformation to get the key names 
-        as the output is a list of tuples so, `[(k1, v1), (k2, v2), (k3, v3)]`
-        '''
-        just_keys = [x_[0] for x_ in key_lis] 
-        # just_keys = list( np.unique( just_keys )  )
-        if ( constants.KIND_KEY_NAME in just_keys ):
-            parser.getValsFromKey( yaml_dict, constants.KIND_KEY_NAME, kind_values )
-        '''
-        For the time being Kind:DeamonSet is not a legit sink because they do not directly provision deplyoments 
-        '''
-        # print(just_keys) 
-        if ( constants.PRIVI_KW in just_keys ) and ( constants.DEAMON_KW not in kind_values  ) :
+    logging.info(f"scanForOverPrivileges called with script_path: {script_path}")
+
+    key_count, privi_dict_return = 0, {}
+    kind_values = []
+    checkVal = parser.checkIfValidK8SYaml(script_path)
+
+    if checkVal:
+        dict_as_list = parser.loadMultiYAML(script_path)
+        yaml_dict = parser.getSingleDict4MultiDocs(dict_as_list)
+        key_lis = []
+        parser.getKeyRecursively(yaml_dict, key_lis)
+        just_keys = [x_[0] for x_ in key_lis]
+
+        if constants.KIND_KEY_NAME in just_keys:
+            parser.getValsFromKey(yaml_dict, constants.KIND_KEY_NAME, kind_values)
+
+        if (constants.PRIVI_KW in just_keys) and (constants.DEAMON_KW not in kind_values):
             privilege_values = []
-            parser.getValsFromKey( yaml_dict, constants.PRIVI_KW , privilege_values )
-            # print(privilege_values) 
+            parser.getValsFromKey(yaml_dict, constants.PRIVI_KW, privilege_values)
+
             for value_ in privilege_values:
-                    if value_ == True: 
-                        key_lis_holder = parser.keyMiner(yaml_dict, value_ ) 
-                        # print( key_lis_holder )
-                        if(constants.CONTAINER_KW in key_lis_holder) and (constants.SECU_CONT_KW in key_lis_holder) and (constants.PRIVI_KW in key_lis_holder):
-                            key_count += 1
-                            privi_dict_return[key_count] = value_, key_lis_holder 
-    return privi_dict_return 
+                if value_ == True:
+                    key_lis_holder = parser.keyMiner(yaml_dict, value_)
+
+                    if (constants.CONTAINER_KW in key_lis_holder) and (constants.SECU_CONT_KW in key_lis_holder) and (constants.PRIVI_KW in key_lis_holder):
+                        key_count += 1
+                        privi_dict_return[key_count] = value_, key_lis_holder
+                        logging.info(f"Found overprivileged container: {value_}, {key_lis_holder}")
+
+    logging.info(f"scanForOverPrivileges completed for script_path: {script_path} with result: {privi_dict_return}")
+    return privi_dict_return
+
 
 def getItemFromSecret( dict_sec, pos ): 
     dic2ret = {}
@@ -250,56 +262,49 @@ def scanSingleManifest( path_to_script ):
     return within_secret_, templ_secret_, valid_taint_secr, valid_taint_privi 
 
 
-def scanForHTTP( path2script ):
-    sh_files_configmaps = {} 
-    http_count = 0 
-    if parser.checkIfValidK8SYaml( path2script ) or parser.checkIfValidHelm( path2script ):
-        dict_as_list = parser.loadMultiYAML( path2script )
-        yaml_d       = parser.getSingleDict4MultiDocs( dict_as_list )
-        all_vals     = list (parser.getValuesRecursively( yaml_d )  )
-        all_vals     = [x_ for x_ in all_vals if isinstance(x_, str) ] 
+def scanForHTTP(path2script):
+    logging.info(f"scanForHTTP called with path2script: {path2script}")
+
+    sh_files_configmaps = {}
+    http_count = 0
+
+    if parser.checkIfValidK8SYaml(path2script) or parser.checkIfValidHelm(path2script):
+        dict_as_list = parser.loadMultiYAML(path2script)
+        yaml_d = parser.getSingleDict4MultiDocs(dict_as_list)
+        all_vals = list(parser.getValuesRecursively(yaml_d))
+        all_vals = [x_ for x_ in all_vals if isinstance(x_, str)]
+
         for val_ in all_vals:
-            # if (constants.HTTP_KW in val_ ) and ( (constants.WWW_KW in val_) and (constants.ORG_KW in val_) ):
-            if (constants.HTTP_KW in val_ ) :
-                key_lis   = []
-                parser.getKeyRecursively(yaml_d, key_lis) 
-                '''
-                if you are using `parser.getKeyRecursively` to get all keys , you need to do some trnasformation to get the key names 
-                as the output is a list of tuples so, `[(k1, v1), (k2, v2), (k3, v3)]`
-                '''
-                just_keys = [x_[0] for x_ in key_lis] 
-                if ( constants.SPEC_KW in just_keys ):
-                    '''
-                    this branch is for HTTP values coming from Deplyoment manifests  
-                    '''                    
-                    http_count += 1 
-                    sh_files_configmaps[http_count] =  val_ 
-                elif( parser.checkIfValidHelm( path2script ) ):
-                    '''
-                    this branch is for HTTP values coming from Values.yaml in HELM charts  
-                    '''
-                    http_count += 1 
+            if constants.HTTP_KW in val_:
+                key_lis = []
+                parser.getKeyRecursively(yaml_d, key_lis)
+                just_keys = [x_[0] for x_ in key_lis]
+
+                if constants.SPEC_KW in just_keys:
+                    http_count += 1
+                    sh_files_configmaps[http_count] = val_
+                    logging.info(f"Found HTTP value in Deployment manifest: {val_}")
+
+                elif parser.checkIfValidHelm(path2script):
+                    http_count += 1
                     matching_keys = parser.keyMiner(yaml_d, val_)
-                    key_ = matching_keys[-1]  
-                    infected_list = graphtaint.mineViolationGraph(path2script, yaml_d, val_, key_) 
+                    key_ = matching_keys[-1]
+                    infected_list = graphtaint.mineViolationGraph(path2script, yaml_d, val_, key_)
                     sh_files_configmaps[http_count] = infected_list
-                else: 
-                    '''
-                    this branch is for HTTP values coming from ConfigMaps 
-                    '''                    
-                    val_holder = [] 
+                    logging.info(f"Found HTTP value in Helm chart: {val_}")
+
+                else:
+                    val_holder = []
                     parser.getValsFromKey(yaml_d, constants.KIND_KEY_NAME, val_holder)
-                    if ( constants.CONFIGMAP_KW in val_holder ):
-                        http_count += 1 
-                        infected_list = graphtaint.getTaintsFromConfigMaps( path2script  ) 
+                    if constants.CONFIGMAP_KW in val_holder:
+                        http_count += 1
+                        infected_list = graphtaint.getTaintsFromConfigMaps(path2script)
                         sh_files_configmaps[http_count] = infected_list
-                        # print('ASI_MAMA:', sh_files_configmaps) 
-                        # print( val_holder )
-                        # print(val_)
-                        # print(just_keys)  
-    
-    # print(sh_files_configmaps) 
-    return sh_files_configmaps 
+                        logging.info(f"Found HTTP value in ConfigMap: {val_}")
+
+    logging.info(f"scanForHTTP completed for path2script: {path2script} with result: {sh_files_configmaps}")
+    return sh_files_configmaps
+
 
 def scanForMissingSecurityContext(path_scrpt):
     dic, lis   = {}, []
@@ -507,27 +512,30 @@ def scanForTrueIPC(path_script ):
             if constants.TRUE_LOWER_KW in vals_for_ipc: 
                 cnt += 1 
                 dic[ cnt ] = []
-    return dic  
+    return dic
 
-def scanDockerSock(path_script ):
-    dic, lis   = {}, []
-    if ( parser.checkIfValidK8SYaml( path_script )  ): 
-        cnt = 0 
-        dict_as_list = parser.loadMultiYAML( path_script )
-        yaml_di      = parser.getSingleDict4MultiDocs( dict_as_list )        
-        temp_ls = [] 
-        parser.getKeyRecursively(yaml_di, temp_ls) 
-        '''
-        if you are using `parser.getKeyRecursively` to get all keys , you need to do some trnasformation to get the key names 
-        as the output is a list of tuples so, `[(k1, v1), (k2, v2), (k3, v3)]`
-        '''
-        key_list = [ x_[0] for x_ in temp_ls  ]
-        if ( all( z_ in key_list for z_ in constants.DOCKERSOCK_KW_LIST )  ) :
-            all_values = list( parser.getValuesRecursively(yaml_di)  )
-            if (constants.DOCKERSOCK_PATH_KW in all_values):
-                cnt += 1 
-                dic[ cnt ] = []
-    return dic  
+def scanDockerSock(path_script):
+    logging.info(f"scanDockerSock called with path_script: {path_script}")
+
+    dic, lis = {}, []
+
+    if parser.checkIfValidK8SYaml(path_script):
+        cnt = 0
+        dict_as_list = parser.loadMultiYAML(path_script)
+        yaml_di = parser.getSingleDict4MultiDocs(dict_as_list)
+        temp_ls = []
+        parser.getKeyRecursively(yaml_di, temp_ls)
+        key_list = [x_[0] for x_ in temp_ls]
+
+        if all(z_ in key_list for z_ in constants.DOCKERSOCK_KW_LIST):
+            all_values = list(parser.getValuesRecursively(yaml_di))
+            if constants.DOCKERSOCK_PATH_KW in all_values:
+                cnt += 1
+                dic[cnt] = []
+                logging.info(f"Found DockerSock path in the YAML file: {path_script}")
+
+    logging.info(f"scanDockerSock completed for path_script: {path_script} with result: {dic}")
+    return dic
 
 def runScanner(dir2scan):
     all_content   = [] 
@@ -583,29 +591,32 @@ def runScanner(dir2scan):
     return all_content
 
 
-def scanForHostNetwork(path_script ):
-    dic, lis   = {}, []
-    if ( parser.checkIfValidK8SYaml( path_script )  ): 
-        cnt = 0 
-        dict_as_list = parser.loadMultiYAML( path_script )
-        yaml_di      = parser.getSingleDict4MultiDocs( dict_as_list )        
-        temp_ls = [] 
-        parser.getKeyRecursively(yaml_di, temp_ls) 
-        '''
-        if you are using `parser.getKeyRecursively` to get all keys , you need to do some trnasformation to get the key names 
-        as the output is a list of tuples so, `[(k1, v1), (k2, v2), (k3, v3)]`
-        '''
-        key_list = [ x_[0] for x_ in temp_ls  ]
-        if (constants.SPEC_KW in key_list ) and ( constants.HOST_NET_KW in key_list ) :
-            vals_for_net = [] 
+def scanForHostNetwork(path_script):
+    logging.info(f"scanForHostNetwork called with path_script: {path_script}")
+
+    dic, lis = {}, []
+
+    if parser.checkIfValidK8SYaml(path_script):
+        cnt = 0
+        dict_as_list = parser.loadMultiYAML(path_script)
+        yaml_di = parser.getSingleDict4MultiDocs(dict_as_list)
+        temp_ls = []
+        parser.getKeyRecursively(yaml_di, temp_ls)
+        key_list = [x_[0] for x_ in temp_ls]
+
+        if (constants.SPEC_KW in key_list) and (constants.HOST_NET_KW in key_list):
+            vals_for_net = []
             parser.getValsFromKey(yaml_di, constants.HOST_NET_KW, vals_for_net)
-            # print(vals_for_net)
-            vals_for_net = [str(z_) for z_ in vals_for_net if isinstance( z_,  bool) ]
+            vals_for_net = [str(z_) for z_ in vals_for_net if isinstance(z_, bool)]
             vals_for_net = [z_.lower() for z_ in vals_for_net]
-            if constants.TRUE_LOWER_KW in vals_for_net: 
-                cnt += 1 
-                dic[ cnt ] = []
-    return dic  
+
+            if constants.TRUE_LOWER_KW in vals_for_net:
+                cnt += 1
+                dic[cnt] = []
+                logging.info(f"Found Host Network in the YAML file: {path_script}")
+
+    logging.info(f"scanForHostNetwork completed for path_script: {path_script} with result: {dic}")
+    return dic
 
 
 def scanForCAPSYS(path_script ):
