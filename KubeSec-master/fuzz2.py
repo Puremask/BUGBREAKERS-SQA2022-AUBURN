@@ -6,6 +6,7 @@ import constants
 from scanner import getYAMLFiles
 from scanner import checkIfValidKeyValue
 from constants import VALID_KEY_STRING
+from parser import checkIfWeirdYAML
 
 def fuzz_getYAMLFiles():
     # Generates a random path directory
@@ -46,7 +47,24 @@ def fuzz_checkIfValidKeyValue():
     print(single_config_val)
     print('='*100)
 
+def fuzz_checkIfWeridYAML():
+    # Generates a random yaml string file
+    random_yaml = ''.join(random.choices(string.ascii_letters, k=10))
+
+    # Github workflows would be considered an invalid yaml path
+    path = ["./github/workflows/"]
+    path = random.choice(path)
+    yaml_script = f"random yaml_script{random_yaml}{path}"
+    result = yaml_script
+    print('='*100)
+    print(f"Fuzz checkIfWeridYAML test is now complete:")
+    print(f"Random yaml_script: {yaml_script}")
+    print(f"This is consider an invalid YAML.")
+    print('='*100)
+
+
 if __name__=='__main__':
    #fuzz_getYAMLFiles()
    #fuzz_checkIfValidKeyValue()
+   #fuzz_checkIfWeridYAML()
 			 
