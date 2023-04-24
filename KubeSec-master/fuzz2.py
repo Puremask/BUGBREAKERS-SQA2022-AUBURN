@@ -7,6 +7,7 @@ from scanner import getYAMLFiles
 from scanner import checkIfValidKeyValue
 from constants import VALID_KEY_STRING
 from parser import checkIfWeirdYAML
+from scanner import isValidUserName
 
 def fuzz_getYAMLFiles():
     # Generates a random path directory
@@ -60,6 +61,26 @@ def fuzz_checkIfWeridYAML():
     print(f"Fuzz checkIfWeridYAML test is now complete:")
     print(f"Random yaml_script: {yaml_script}")
     print(f"This is consider an invalid YAML.")
+    print('='*100)
+
+def fuzz_isValidUserName():
+    #Random string for username.
+    randomUser = ''.join(random.choices(string.ascii_letters + string.digits, k = 10))
+    result = isValidUserName(randomUser)
+
+    #Check boolean.
+    assert isinstance(result, bool)
+    assert result == False
+
+    #Random string to check with FORBIDDEN_USER_NAMES
+    flag2Ret = random.choice(constants.FORBIDDEN_USER_NAMES)
+    randomUser = ''.join(random.choices(string.ascii_letters + string.digits, k=15)) + (f':      ')+ (flag2Ret)
+    result = isValidUserName(randomUser)
+    assert isinstance(result, bool)
+    assert result == True
+    print('='*100)
+    print(f"Key value is valid: Fuzz isValidUserName test is now completed.")
+    print(randomUser)
     print('='*100)
 
 
