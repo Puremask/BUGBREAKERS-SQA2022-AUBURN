@@ -8,6 +8,7 @@ from scanner import checkIfValidKeyValue
 from constants import VALID_KEY_STRING
 from parser import checkIfWeirdYAML
 from scanner import isValidUserName
+from scanner import checkIfValidSecret
 
 def fuzz_getYAMLFiles():
     # Generates a random path directory
@@ -73,14 +74,34 @@ def fuzz_isValidUserName():
     assert result == False
 
     #Random string to check with FORBIDDEN_USER_NAMES
-    flag2Ret = random.choice(constants.FORBIDDEN_USER_NAMES)
-    randomUser = ''.join(random.choices(string.ascii_letters + string.digits, k=15)) + (f':      ')+ (flag2Ret)
+    flagReturn = random.choice(constants.FORBIDDEN_USER_NAMES)
+    randomUser = ''.join(random.choices(string.ascii_letters + string.digits, k=10)) + (f':      ')+ (flagReturn)
     result = isValidUserName(randomUser)
     assert isinstance(result, bool)
     assert result == True
     print('='*100)
     print(f"Key value is valid: Fuzz isValidUserName test is now completed.")
     print(randomUser)
+    print('='*100)
+
+def fuzz_checkIfValidSecret():
+    #Random string for secret.
+    shhhhh = ''.join(random.choices(string.ascii_letters, k = 10))
+    result = checkIfValidSecret(shhhhh)
+
+    #Check boolean.
+    assert isinstance(result, bool)
+    assert result == False
+
+    #Random string to check with FORBIDDEN_USER_NAMES
+    flagReturn2 = random.choice(constants.SECRET_USER_LIST | constants.SECRET_PASSWORD_LIST)
+    shhhhh = ''.join(random.choices(string.ascii_letters + string.digits, k=10)) + (f':      ')+ (flagReturn2)
+    result = isValidUserName(shhhhh)
+    assert isinstance(result, bool)
+    assert result == True
+    print('='*100)
+    print(f"Key value is valid: Fuzz checkIfValidSecret test is now completed.")
+    print(shhhhh)
     print('='*100)
 
 
@@ -90,4 +111,5 @@ if __name__=='__main__':
    #fuzz_checkIfValidKeyValue()
    #fuzz_checkIfWeridYAML()
    #fuzz_isValidUserName()
+   #fuzz_checkIfValidSecret()
 
