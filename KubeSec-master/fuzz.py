@@ -8,7 +8,9 @@ from scanner import checkIfValidKeyValue
 from constants import VALID_KEY_STRING
 from parser import checkIfWeirdYAML
 from scanner import isValidUserName
+from constants import FORBIDDEN_USER_NAMES
 from scanner import checkIfValidSecret
+from constants import INVALID_SECRET_CONFIG_VALUES
 
 def fuzz_getYAMLFiles():
     # Generates a random path directory
@@ -71,16 +73,16 @@ def fuzz_isValidUserName():
 
     #Check boolean.
     assert isinstance(result, bool)
-    assert result == False
+    assert result == True
 
     #Random string to check with FORBIDDEN_USER_NAMES
     flagReturn = random.choice(constants.FORBIDDEN_USER_NAMES)
     randomUser = ''.join(random.choices(string.ascii_letters + string.digits, k=10)) + (f':      ')+ (flagReturn)
     result = isValidUserName(randomUser)
     assert isinstance(result, bool)
-    assert result == True
+    assert result == False
     print('='*100)
-    print(f"Key value is valid: Fuzz isValidUserName test is now completed.")
+    print(f"Username is valid. (An example of a forbidden username is listed adjacent): Fuzz isValidUserName test is now completed.")
     print(randomUser)
     print('='*100)
 
@@ -91,16 +93,16 @@ def fuzz_checkIfValidSecret():
 
     #Check boolean.
     assert isinstance(result, bool)
-    assert result == False
+    assert result == True
 
-    #Random string to check with FORBIDDEN_USER_NAMES
-    flagReturn2 = random.choice(constants.SECRET_USER_LIST | constants.SECRET_PASSWORD_LIST)
+    #Random string to check with Secrets
+    flagReturn2 = random.choice(constants.INVALID_SECRET_CONFIG_VALUES)
     shhhhh = ''.join(random.choices(string.ascii_letters + string.digits, k=10)) + (f':      ')+ (flagReturn2)
     result = isValidUserName(shhhhh)
     assert isinstance(result, bool)
-    assert result == True
+    assert result == False
     print('='*100)
-    print(f"Key value is valid: Fuzz checkIfValidSecret test is now completed.")
+    print(f"Secret is valid. (An example of an invalid secret value is listed adjacent): Fuzz checkIfValidSecret test is now completed.")
     print(shhhhh)
     print('='*100)
 
